@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Algorithm Trace — Interactive</title>
+<meta name="description" content="Interactive execution visualizer for six sorting algorithms and four pathfinding algorithms, built on one shared generator-driven engine.">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='20' fill='%230a0d0d'/%3E%3Ctext x='50' y='68' font-size='60' text-anchor='middle' fill='%236EE7B7' font-family='monospace'%3E%3E_%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0d0d;
+    --panel:#0f1414;
+    --panel2:#131a1a;
+    --border:#1e2a29;
+    --border-hi:#2c3d3b;
+    --mint:#6EE7B7;
+    --mint-dim:#3a6656;
+    --sky:#5EC8E8;
+    --amber:#F5A25D;
+    --red:#E8716B;
+    --text:#E7EFEC;
+    --text-dim:#8AA39C;
+    --text-faint:#4C5F5A;
+    --mono:'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans:'Inter', system-ui, -apple-system, sans-serif;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(110,231,183,0.06), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:var(--sans);
+    min-height:100vh;
+    padding:28px 20px 60px;
+  }
+  .wrap{max-width:1180px;margin:0 auto;}
+
+  /* header */
+  .topbar{display:flex;align-items:flex-end;justify-content:space-between;gap:20px;flex-wrap:wrap;margin-bottom:22px;padding-bottom:18px;border-bottom:1px solid var(--border);}
+  .brand{display:flex;align-items:center;gap:12px;}
+  .prompt{
+    font-family:var(--mono);color:var(--mint);font-size:20px;font-weight:600;
+    border:1px solid var(--border-hi);border-radius:6px;padding:6px 10px;background:var(--panel);
+  }
+  .brand h1{font-family:var(--mono);font-size:20px;letter-spacing:0.5px;margin:0;font-weight:700;}
+  .brand .sub{font-size:12px;color:var(--text-dim);font-family:var(--mono);margin-top:2px;}
+  .tabs{display:flex;gap:6px;background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:4px;}
+  .tab{
+    font-family:var(--mono);font-size:13px;padding:9px 16px;border-radius:7px;cursor:pointer;
+    color:var(--text-dim);border:none;background:transparent;transition:all .15s ease;white-space:nowrap;
+  }
+  .tab:hover{color:var(--text);}
+  .tab.active{background:var(--mint);color:#08110d;font-weight:600;}
+
+  .view{display:none;}
+  .view.active{display:block;animation:fade .25s ease;}
+  @keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+  .panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;padding:18px 20px;}
+  .row{display:flex;gap:14px;flex-wrap:wrap;align-items:center;}
+  .controls{margin-bottom:16px;}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field label{font-size:11px;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-dim);font-family:var(--mono);}
+  select,input[type=range]{font-family:var(--sans);}
+  select{
+    background:var(--panel2);color:var(--text);border:1px solid var(--border-hi);border-radius:7px;
+    padding:8px 10px;font-size:13px;min-width:150px;cursor:pointer;
+  }
+  input[type=range]{width:130px;accent-color:var(--mint);}
+  .btn{
+    font-family:var(--mono);font-size:13px;padding:9px 14px;border-radius:7px;border:1px solid var(--border-hi);
+    background:var(--panel2);color:var(--text);cursor:pointer;transition:all .15s ease;font-weight:500;
+  }
+  .btn:hover{border-color:var(--mint);color:var(--mint);}
+  .btn.primary{background:var(--mint);color:#08110d;border-color:var(--mint);font-weight:700;}
+  .btn.primary:hover{background:#82f0c4;color:#08110d;}
+  .btn:disabled{opacity:0.4;cursor:not-allowed;}
+  .btn.small{padding:6px 10px;font-size:12px;}
+
+  /* stats strip */
+  .stats{display:flex;gap:10px;flex-wrap:wrap;margin:14px 0;}
+  .stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:9px 14px;min-width:110px;}
+  .stat .n{font-family:var(--mono);font-size:20px;font-weight:700;color:var(--mint);}
+  .stat .l{font-size:10px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-dim);margin-top:2px;}
+  .msgline{
+    font-family:var(--mono);font-size:13px;color:var(--sky);background:var(--panel2);
+    border:1px solid var(--border);border-left:3px solid var(--sky);border-radius:6px;
+    padding:9px 12px;margin-top:14px;min-height:16px;
+  }
+
+  /* sorting bars */
+  .barfield{
+    display:flex;align-items:flex-end;gap:2px;height:300px;background:var(--panel2);
+    border:1px solid var(--border);border-radius:10px;padding:14px;margin-top:14px;
+  }
+  .bar{background:var(--mint-dim);border-radius:2px 2px 0 0;flex:1;transition:height .08s linear, background .08s linear;min-width:2px;}
+  .bar.cmp{background:var(--sky);}
+  .bar.swap{background:var(--amber);}
+  .bar.done{background:var(--mint);}
+
+  .table{width:100%;border-collapse:collapse;margin-top:14px;font-size:13px;}
+  .table th,.table td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--border);}
+  .table th{font-family:var(--mono);font-size:11px;text-transform:uppercase;color:var(--text-dim);letter-spacing:0.5px;}
+  .table td{font-family:var(--mono);color:var(--text);}
+  .table tr.hl{background:rgba(110,231,183,0.06);}
+
+  .section-title{font-family:var(--mono);font-size:13px;color:var(--text-dim);text-transform:uppercase;letter-spacing:0.6px;margin:26px 0 10px;}
+
+  /* race mode */
+  .race-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px;}
+  @media(max-width:820px){.race-grid{grid-template-columns:repeat(2,1fr);}}
+  .race-card{background:var(--panel2);border:1px solid var(--border);border-radius:10px;padding:12px;position:relative;overflow:hidden;}
+  .race-card.finished{border-color:var(--mint);}
+  .race-card .rh{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:8px;}
+  .race-card .rh .name{font-family:var(--mono);font-size:12.5px;font-weight:600;}
+  .race-card .rh .rank{font-family:var(--mono);font-size:11px;color:var(--mint);font-weight:700;}
+  .race-bars{display:flex;align-items:flex-end;gap:1px;height:90px;}
+  .race-bars .bar{border-radius:1px 1px 0 0;}
+  .race-stats{display:flex;justify-content:space-between;margin-top:8px;font-family:var(--mono);font-size:11px;color:var(--text-dim);}
+  .race-stats b{color:var(--text);}
+
+  /* pathfinding */
+  .pf-layout{display:flex;gap:18px;flex-wrap:wrap;margin-top:14px;align-items:flex-start;}
+  #pfGrid{display:grid;border:1px solid var(--border-hi);border-radius:8px;overflow:hidden;background:var(--panel2);}
+  .cell{width:22px;height:22px;background:var(--panel2);border-right:1px solid rgba(255,255,255,0.02);border-bottom:1px solid rgba(255,255,255,0.02);transition:background .1s ease;}
+  .cell.wall{background:#050707;}
+  .cell.mud{background:#4a3620;}
+  .cell.start{background:var(--mint);}
+  .cell.end{background:var(--red);}
+  .cell.visited{background:rgba(94,200,232,0.35);}
+  .cell.frontier{background:rgba(94,200,232,0.14);}
+  .cell.path{background:var(--mint);}
+  .pf-side{flex:1;min-width:220px;}
+  .legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;font-family:var(--mono);font-size:11px;color:var(--text-dim);}
+  .legend span{display:inline-flex;align-items:center;gap:5px;}
+  .swatch{width:11px;height:11px;border-radius:2px;display:inline-block;}
+
+  .algo-blurb{font-size:13px;line-height:1.6;color:var(--text-dim);margin-top:14px;}
+  .algo-blurb b{color:var(--text);}
+
+  footer{text-align:center;margin-top:40px;color:var(--text-faint);font-family:var(--mono);font-size:11px;}
+  footer .kbd{border:1px solid var(--border-hi);border-radius:4px;padding:1px 6px;background:var(--panel2);color:var(--text-dim);}
+
+  /* accessibility + micro-polish */
+  button:focus-visible, select:focus-visible, input:focus-visible, .cell:focus-visible{
+    outline:2px solid var(--mint); outline-offset:2px;
+  }
+  .btn.primary.playing{background:var(--amber);border-color:var(--amber);}
+  .btn.primary.playing:hover{background:#ffb877;}
+  .kbdhint{font-size:10px;color:var(--text-faint);font-family:var(--mono);margin-left:6px;}
+  .stat .n{transition:color .2s ease;}
+  #pfGrid{touch-action:none; max-width:100%; overflow-x:auto;}
+  .algo-blurb.sort-blurb{margin-top:14px;padding-top:12px;border-top:1px solid var(--border);}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <div class="brand">
+      <div class="prompt">&gt;_</div>
+      <div>
+        <h1>ALGORITHM TRACE</h1>
+        <div class="sub">DAA Group Activity · live execution visualizer</div>
+      </div>
+    </div>
+    <div class="tabs">
+      <button class="tab active" data-view="sort">Sorting Visualizer</button>
+      <button class="tab" data-view="race">Race Mode</button>
+      <button class="tab" data-view="path">Pathfinding Visualizer</button>
+    </div>
+  </div>
+
+  <!-- SORTING VIEW -->
+  <div class="view active" id="view-sort">
+    <div class="panel">
+      <div class="row controls">
+        <div class="field">
+          <label>Algorithm</label>
+          <select id="sortAlgo">
+            <option value="bubble">Bubble Sort</option>
+            <option value="selection">Selection Sort</option>
+            <option value="insertion">Insertion Sort</option>
+            <option value="merge">Merge Sort</option>
+            <option value="quick">Quick Sort</option>
+            <option value="heap">Heap Sort</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Pattern</label>
+          <select id="sortPattern">
+            <option value="random">Random</option>
+            <option value="reversed">Reversed</option>
+            <option value="nearly">Nearly sorted</option>
+            <option value="few">Few unique values</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Size: <span id="sizeVal">40</span></label>
+          <input type="range" id="sortSize" min="10" max="80" value="40">
+        </div>
+        <div class="field">
+          <label>Speed: <span id="speedVal">mid</span></label>
+          <input type="range" id="sortSpeed" min="1" max="100" value="60">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="row" style="gap:8px;">
+            <button class="btn" id="sortShuffle">Shuffle</button>
+            <button class="btn" id="sortStep">Step</button>
+            <button class="btn primary" id="sortPlay">Run ▶</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="n" id="sortComparisons">0</div><div class="l">Comparisons</div></div>
+        <div class="stat"><div class="n" id="sortSwaps">0</div><div class="l">Swaps / Writes</div></div>
+        <div class="stat"><div class="n" id="sortStatus">Idle</div><div class="l">Status</div></div>
+      </div>
+
+      <div class="barfield" id="sortBars"></div>
+      <div class="msgline" id="sortMsg">&gt;_ Ready. Press Run to watch it sort, step-by-step.</div>
+      <p class="algo-blurb sort-blurb" id="sortBlurb"></p>
+    </div>
+
+    <div class="section-title">Reading the table</div>
+    <div class="panel">
+      <table class="table">
+        <thead><tr><th>Algorithm</th><th>Best</th><th>Average</th><th>Worst</th><th>Space</th></tr></thead>
+        <tbody id="sortTable">
+          <tr data-a="bubble"><td>Bubble Sort</td><td>O(n)</td><td>O(n²)</td><td>O(n²)</td><td>O(1)</td></tr>
+          <tr data-a="selection"><td>Selection Sort</td><td>O(n²)</td><td>O(n²)</td><td>O(n²)</td><td>O(1)</td></tr>
+          <tr data-a="insertion"><td>Insertion Sort</td><td>O(n)</td><td>O(n²)</td><td>O(n²)</td><td>O(1)</td></tr>
+          <tr data-a="merge"><td>Merge Sort</td><td>O(n log n)</td><td>O(n log n)</td><td>O(n log n)</td><td>O(n)</td></tr>
+          <tr data-a="quick"><td>Quick Sort</td><td>O(n log n)</td><td>O(n log n)</td><td>O(n²)</td><td>O(log n)</td></tr>
+          <tr data-a="heap"><td>Heap Sort</td><td>O(n log n)</td><td>O(n log n)</td><td>O(n log n)</td><td>O(1)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- RACE VIEW -->
+  <div class="view" id="view-race">
+    <div class="panel">
+      <div class="row controls">
+        <div class="field">
+          <label>Array size: <span id="raceSizeVal">18</span></label>
+          <input type="range" id="raceSize" min="10" max="30" value="18">
+        </div>
+        <div class="field">
+          <label>Speed: <span id="raceSpeedVal">mid</span></label>
+          <input type="range" id="raceSpeed" min="1" max="100" value="55">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="row" style="gap:8px;">
+            <button class="btn" id="raceShuffle">New Array</button>
+            <button class="btn primary" id="racePlay">Start Race ▶</button>
+          </div>
+        </div>
+      </div>
+      <div class="msgline" id="raceMsg">&gt;_ Same array, same rules — only the algorithm differs.</div>
+      <div class="race-grid" id="raceGrid"></div>
+    </div>
+  </div>
+
+  <!-- PATHFINDING VIEW -->
+  <div class="view" id="view-path">
+    <div class="panel">
+      <div class="row controls">
+        <div class="field">
+          <label>Algorithm</label>
+          <select id="pfAlgo">
+            <option value="bfs">BFS</option>
+            <option value="dfs">DFS</option>
+            <option value="dijkstra">Dijkstra</option>
+            <option value="astar">A* Search</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Draw mode</label>
+          <select id="pfMode">
+            <option value="wall">Walls</option>
+            <option value="mud">Mud (cost 5)</option>
+            <option value="erase">Erase</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Speed: <span id="pfSpeedVal">mid</span></label>
+          <input type="range" id="pfSpeed" min="1" max="100" value="70">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <div class="row" style="gap:8px;">
+            <button class="btn" id="pfMaze">Generate Maze</button>
+            <button class="btn" id="pfClear">Clear Grid</button>
+            <button class="btn primary" id="pfRun">Run ▶</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><div class="n" id="pfVisited">0</div><div class="l">Cells visited</div></div>
+        <div class="stat"><div class="n" id="pfPathLen">–</div><div class="l">Path length</div></div>
+        <div class="stat"><div class="n" id="pfCost">–</div><div class="l">Path cost</div></div>
+      </div>
+
+      <div class="pf-layout">
+        <div id="pfGrid"></div>
+        <div class="pf-side">
+          <div class="legend">
+            <span><i class="swatch" style="background:var(--mint)"></i>Start</span>
+            <span><i class="swatch" style="background:var(--red)"></i>End</span>
+            <span><i class="swatch" style="background:#050707"></i>Wall</span>
+            <span><i class="swatch" style="background:#4a3620"></i>Mud (cost 5)</span>
+            <span><i class="swatch" style="background:rgba(94,200,232,0.35)"></i>Visited</span>
+          </div>
+          <p class="algo-blurb" id="pfBlurb"></p>
+        </div>
+      </div>
+      <div class="msgline" id="pfMsg">&gt;_ Click cells to draw walls or mud. Generate a maze for a guaranteed-solvable grid.</div>
+    </div>
+  </div>
+
+  <footer>ALGORITHM TRACE · one generator engine, ten algorithms
+    <span class="kbdhint">— <span class="kbd">Space</span> play/pause · <span class="kbd">S</span> step · <span class="kbd">N</span> new input</span>
+  </footer>
+</div>
+
+<script>
+/* ============ TAB SWITCHING ============ */
+let activeView='sort';
+const pauseHandlers={}; // populated by each view module: view -> fn
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    document.getElementById('view-'+t.dataset.view).classList.add('active');
+    if(pauseHandlers[activeView]) pauseHandlers[activeView](); // pause the view we're leaving
+    activeView=t.dataset.view;
+  });
+});
+
+/* ============ SHARED HELPERS ============ */
+function makeArray(n, pattern){
+  let a=[];
+  if(pattern==='reversed'){ for(let i=0;i<n;i++) a.push(Math.round((n-i)/n*95)+5); }
+  else if(pattern==='nearly'){
+    for(let i=0;i<n;i++) a.push(Math.round((i+1)/n*95)+5);
+    for(let k=0;k<Math.max(1,Math.floor(n*0.08));k++){
+      let i=Math.floor(Math.random()*n), j=Math.floor(Math.random()*n);
+      [a[i],a[j]]=[a[j],a[i]];
+    }
+  }
+  else if(pattern==='few'){
+    let vals=[15,35,55,75,95];
+    for(let i=0;i<n;i++) a.push(vals[Math.floor(Math.random()*vals.length)]);
+  }
+  else { for(let i=0;i<n;i++) a.push(Math.floor(Math.random()*95)+5); }
+  return a;
+}
+
+/* ============ SORT GENERATORS ============ */
+function* bubbleSort(arr){
+  let a=arr.slice(), n=a.length, comparisons=0, swaps=0;
+  for(let i=0;i<n-1;i++){
+    let did=false;
+    for(let j=0;j<n-1-i;j++){
+      comparisons++;
+      yield {array:a.slice(),comparing:[j,j+1],swapping:null,comparisons,swaps,message:`Comparing idx ${j} and ${j+1}`};
+      if(a[j]>a[j+1]){[a[j],a[j+1]]=[a[j+1],a[j]];swaps++;did=true;
+        yield {array:a.slice(),comparing:null,swapping:[j,j+1],comparisons,swaps,message:`Swapped idx ${j} and ${j+1}`};}
+    }
+    if(!did) break;
+  }
+  yield {array:a.slice(),comparing:null,swapping:null,comparisons,swaps,message:'Sorted.',done:true};
+}
+function* selectionSort(arr){
+  let a=arr.slice(),n=a.length,comparisons=0,swaps=0;
+  for(let i=0;i<n-1;i++){
+    let min=i;
+    for(let j=i+1;j<n;j++){
+      comparisons++;
+      yield {array:a.slice(),comparing:[min,j],swapping:null,comparisons,swaps,message:`Tracking min at idx ${min}, checking idx ${j}`};
+      if(a[j]<a[min]) min=j;
+    }
+    if(min!==i){[a[i],a[min]]=[a[min],a[i]];swaps++;
+      yield {array:a.slice(),comparing:null,swapping:[i,min],comparisons,swaps,message:`Swapped idx ${i} and ${min}`};}
+  }
+  yield {array:a.slice(),comparing:null,swapping:null,comparisons,swaps,message:'Sorted.',done:true};
+}
+function* insertionSort(arr){
+  let a=arr.slice(),n=a.length,comparisons=0,swaps=0;
+  for(let i=1;i<n;i++){
+    let key=a[i],j=i-1;
+    while(j>=0){
+      comparisons++;
+      yield {array:a.slice(),comparing:[j,j+1],swapping:null,comparisons,swaps,message:`Comparing idx ${j} with key ${key}`};
+      if(a[j]>key){a[j+1]=a[j];swaps++;j--;
+        yield {array:a.slice(),comparing:null,swapping:[j+1],comparisons,swaps,message:`Shifted value right into idx ${j+1}`};}
+      else break;
+    }
+    a[j+1]=key;
+  }
+  yield {array:a.slice(),comparing:null,swapping:null,comparisons,swaps,message:'Sorted.',done:true};
+}
+function* mergeSort(arr){
+  let a=arr.slice(),comparisons=0,swaps=0;
+  function* sort(lo,hi){
+    if(hi-lo<=1) return;
+    let mid=(lo+hi)>>1;
+    yield* sort(lo,mid); yield* sort(mid,hi);
+    let left=a.slice(lo,mid), right=a.slice(mid,hi), i=0,j=0,k=lo;
+    while(i<left.length&&j<right.length){
+      comparisons++;
+      yield {array:a.slice(),comparing:[lo+i,mid+j],swapping:null,comparisons,swaps,message:'Comparing merge candidates'};
+      if(left[i]<=right[j]){a[k]=left[i];i++;} else {a[k]=right[j];j++;}
+      swaps++; k++;
+      yield {array:a.slice(),comparing:null,swapping:[k-1],comparisons,swaps,message:`Placed value at idx ${k-1}`};
+    }
+    while(i<left.length){a[k]=left[i];i++;swaps++;
+      yield {array:a.slice(),comparing:null,swapping:[k],comparisons,swaps,message:'Placing remaining left run'}; k++;}
+    while(j<right.length){a[k]=right[j];j++;swaps++;
+      yield {array:a.slice(),comparing:null,swapping:[k],comparisons,swaps,message:'Placing remaining right run'}; k++;}
+  }
+  yield* sort(0,a.length);
+  yield {array:a.slice(),comparing:null,swapping:null,comparisons,swaps,message:'Sorted.',done:true};
+}
+function* quickSort(arr){
+  let a=arr.slice(),comparisons=0,swaps=0;
+  function* qs(lo,hi){
+    if(lo>=hi) return;
+    let pivot=a[hi], i=lo-1;
+    for(let j=lo;j<hi;j++){
+      comparisons++;
+      yield {array:a.slice(),comparing:[j,hi],swapping:null,comparisons,swaps,message:`Comparing idx ${j} with pivot`};
+      if(a[j]<pivot){ i++;
+        if(i!==j){[a[i],a[j]]=[a[j],a[i]];swaps++;
+          yield {array:a.slice(),comparing:null,swapping:[i,j],comparisons,swaps,message:`Swapped idx ${i} and ${j}`};}
+      }
+    }
+    [a[i+1],a[hi]]=[a[hi],a[i+1]]; swaps++;
+    yield {array:a.slice(),comparing:null,swapping:[i+1,hi],comparisons,swaps,message:`Pivot placed at idx ${i+1}`};
+    yield* qs(lo,i); yield* qs(i+2,hi);
+  }
+  yield* qs(0,a.length-1);
+  yield {array:a.slice(),comparing:null,swapping:null,comparisons,swaps,message:'Sorted.',done:true};
+}
+function* heapSort(arr){
+  let a=arr.slice(),n=a.length,comparisons=0,swaps=0;
+  function* heapify(size,i){
+    let largest=i,l=2*i+1,r=2*i+2;
+    if(l<size){comparisons++;
+      yield {array:a.slice(),comparing:[l,largest],swapping:null,comparisons,swaps,message:`Comparing child idx ${l}`};
+      if(a[l]>a[largest]) largest=l;}
+    if(r<size){comparisons++;
+      yield {array:a.slice(),comparing:[r,largest],swapping:null,comparisons,swaps,message:`Comparing child idx ${r}`};
+      if(a[r]>a[largest]) largest=r;}
+    if(largest!==i){[a[i],a[largest]]=[a[largest],a[i]];swaps++;
+      yield {array:a.slice(),comparing:null,swapping:[i,largest],comparisons,swaps,message:`Swapped idx ${i} and ${largest}`};
+      yield* heapify(size,largest);}
+  }
+  for(let i=Math.floor(n/2)-1;i>=0;i--) yield* heapify(n,i);
+  for(let i=n-1;i>0;i--){
+    [a[0],a[i]]=[a[i],a[0]]; swaps++;
+    yield {array:a.slice(),comparing:null,swapping:[0,i],comparisons,swaps,message:`Moved max into place at idx ${i}`};
+    yield* heapify(i,0);
+  }
+  yield {array:a.slice(),comparing:null,swapping:null,comparisons,swaps,message:'Sorted.',done:true};
+}
+const SORTERS={bubble:bubbleSort,selection:selectionSort,insertion:insertionSort,merge:mergeSort,quick:quickSort,heap:heapSort};
+
+/* ============ SORTING VIEW ============ */
+(function(){
+  let array=[], gen=null, playing=false, timer=null;
+  const bars=document.getElementById('sortBars');
+  const sizeEl=document.getElementById('sortSize'), sizeVal=document.getElementById('sizeVal');
+  const speedEl=document.getElementById('sortSpeed'), speedVal=document.getElementById('speedVal');
+  const algoEl=document.getElementById('sortAlgo'), patEl=document.getElementById('sortPattern');
+  const cmpEl=document.getElementById('sortComparisons'), swpEl=document.getElementById('sortSwaps'), stEl=document.getElementById('sortStatus');
+  const msgEl=document.getElementById('sortMsg');
+  const blurbEl=document.getElementById('sortBlurb');
+
+  const SORT_BLURBS={
+    bubble:'<b>Bubble Sort</b> repeatedly swaps adjacent out-of-order elements, so the largest remaining value "bubbles" to the end on every pass. Simple, but O(n²) on random input.',
+    selection:'<b>Selection Sort</b> scans the unsorted remainder for its minimum and swaps it into place. It always does the same number of comparisons — no best-case speed-up.',
+    insertion:'<b>Insertion Sort</b> grows a sorted prefix one element at a time, shifting larger values right. Nearly linear on already-sorted or nearly-sorted input.',
+    merge:'<b>Merge Sort</b> recursively splits the array in half, sorts each half, then merges the two sorted halves in linear time — a guaranteed O(n log n), regardless of input order.',
+    quick:'<b>Quick Sort</b> partitions around a pivot so smaller values end up left, larger right, then recurses on both sides. Fast on average, but O(n²) on already-sorted input with this last-element pivot rule — watch what happens on "Reversed".',
+    heap:'<b>Heap Sort</b> builds a max-heap, then repeatedly extracts the maximum to the end. Guaranteed O(n log n) with O(1) extra space — no auxiliary array needed.',
+  };
+  function updateBlurb(){ blurbEl.innerHTML=SORT_BLURBS[algoEl.value]; }
+
+  function render(snap){
+    bars.innerHTML='';
+    const a=snap?snap.array:array;
+    const max=Math.max(...a,1);
+    a.forEach((v,idx)=>{
+      const d=document.createElement('div');
+      d.className='bar';
+      d.style.height=(v/max*100)+'%';
+      if(snap){
+        if(snap.done) d.classList.add('done');
+        else if(snap.comparing&&snap.comparing.includes(idx)) d.classList.add('cmp');
+        else if(snap.swapping&&snap.swapping.includes(idx)) d.classList.add('swap');
+      }
+      bars.appendChild(d);
+    });
+    if(snap){
+      cmpEl.textContent=snap.comparisons.toLocaleString(); swpEl.textContent=snap.swaps.toLocaleString();
+      msgEl.textContent='>_ '+snap.message;
+      stEl.textContent=snap.done?'Sorted':'Running';
+    }
+  }
+  function highlightRow(){
+    document.querySelectorAll('#sortTable tr').forEach(r=>r.classList.toggle('hl', r.dataset.a===algoEl.value));
+  }
+  function reset(){
+    stopPlay();
+    array=makeArray(parseInt(sizeEl.value),patEl.value);
+    gen=SORTERS[algoEl.value](array);
+    cmpEl.textContent=0; swpEl.textContent=0; stEl.textContent='Idle';
+    msgEl.textContent='>_ Ready. Press Run or Step.';
+    render(null);
+    highlightRow();
+  }
+  function step(){
+    if(!gen) return false;
+    const {value,done}=gen.next();
+    if(done){stopPlay(); return false;}
+    render(value);
+    if(value.done){stopPlay();}
+    return !value.done;
+  }
+  function speedMs(){
+    const v=parseInt(speedEl.value);
+    return 620-v*6; // 1->~614ms, 100->~20ms
+  }
+  const playBtn=document.getElementById('sortPlay');
+  function stopPlay(){playing=false; clearInterval(timer); timer=null; playBtn.textContent='Run ▶'; playBtn.classList.remove('playing');}
+  function play(){
+    if(playing){stopPlay(); return;}
+    playing=true; playBtn.textContent='Pause ❚❚'; playBtn.classList.add('playing');
+    timer=setInterval(()=>{ if(!step()) stopPlay(); }, speedMs());
+  }
+
+  sizeEl.addEventListener('input',()=>{sizeVal.textContent=sizeEl.value; reset();});
+  speedEl.addEventListener('input',()=>{
+    const v=parseInt(speedEl.value);
+    speedVal.textContent = v<34?'slow':v<67?'mid':'fast';
+    if(playing){stopPlay();play();}
+  });
+  algoEl.addEventListener('change',()=>{reset(); updateBlurb();});
+  patEl.addEventListener('change',reset);
+  document.getElementById('sortShuffle').addEventListener('click',reset);
+  document.getElementById('sortStep').addEventListener('click',()=>{ if(playing) stopPlay(); step(); });
+  playBtn.addEventListener('click',play);
+
+  reset(); updateBlurb();
+  pauseHandlers.sort=stopPlay;
+  window.__sortAPI={play,step:()=>{ if(playing) stopPlay(); step(); },shuffle:reset};
+})();
+
+/* ============ RACE MODE ============ */
+(function(){
+  const NAMES={bubble:'Bubble',selection:'Selection',insertion:'Insertion',merge:'Merge',quick:'Quick',heap:'Heap'};
+  let baseArray=[], racers=[], playing=false, timer=null, rankCount=0;
+  const grid=document.getElementById('raceGrid');
+  const sizeEl=document.getElementById('raceSize'), sizeVal=document.getElementById('raceSizeVal');
+  const speedEl=document.getElementById('raceSpeed'), speedVal=document.getElementById('raceSpeedVal');
+  const msgEl=document.getElementById('raceMsg');
+
+  function build(){
+    stopRace();
+    baseArray=makeArray(parseInt(sizeEl.value),'random');
+    grid.innerHTML='';
+    racers=Object.keys(SORTERS).map(key=>{
+      const card=document.createElement('div');
+      card.className='race-card';
+      card.innerHTML=`<div class="rh"><span class="name">${NAMES[key]}</span><span class="rank"></span></div>
+        <div class="race-bars"></div>
+        <div class="race-stats"><span>cmp <b class="c">0</b></span><span>swp <b class="s">0</b></span></div>`;
+      grid.appendChild(card);
+      return {key, card, gen:SORTERS[key](baseArray), array:baseArray.slice(), done:false, comparisons:0, swaps:0};
+    });
+    rankCount=0;
+    msgEl.textContent='>_ Same array, same rules — only the algorithm differs.';
+    racers.forEach(r=>renderRacer(r,null));
+  }
+  function renderRacer(r,snap){
+    const bars=r.card.querySelector('.race-bars');
+    const a=snap?snap.array:r.array;
+    const max=Math.max(...a,1);
+    bars.innerHTML='';
+    a.forEach((v,idx)=>{
+      const d=document.createElement('div');
+      d.className='bar'; d.style.flex='1'; d.style.height=(v/max*100)+'%';
+      if(snap){
+        if(snap.done) d.classList.add('done');
+        else if(snap.comparing&&snap.comparing.includes(idx)) d.classList.add('cmp');
+        else if(snap.swapping&&snap.swapping.includes(idx)) d.classList.add('swap');
+      }
+      bars.appendChild(d);
+    });
+    if(snap){
+      r.card.querySelector('.c').textContent=snap.comparisons.toLocaleString();
+      r.card.querySelector('.s').textContent=snap.swaps.toLocaleString();
+      if(snap.done && !r.done){
+        r.done=true; rankCount++;
+        r.card.classList.add('finished');
+        r.card.querySelector('.rank').textContent='#'+rankCount;
+      }
+    }
+  }
+  function tick(){
+    let allDone=true;
+    racers.forEach(r=>{
+      if(r.done) return;
+      allDone=false;
+      const {value,done}=r.gen.next();
+      if(!done){ r.array=value.array; renderRacer(r,value); }
+    });
+    if(allDone){ stopRace(); msgEl.textContent='>_ All six finished. Ranked by algorithm efficiency, not luck.'; }
+  }
+  function speedMs(){ const v=parseInt(speedEl.value); return 460-v*4; }
+  const raceBtn=document.getElementById('racePlay');
+  function stopRace(){ playing=false; clearInterval(timer); timer=null; raceBtn.textContent='Start Race ▶'; raceBtn.classList.remove('playing'); }
+  function play(){
+    if(playing){stopRace();return;}
+    playing=true; raceBtn.textContent='Pause ❚❚'; raceBtn.classList.add('playing');
+    timer=setInterval(tick, speedMs());
+  }
+  sizeEl.addEventListener('input',()=>{sizeVal.textContent=sizeEl.value; build();});
+  speedEl.addEventListener('input',()=>{
+    const v=parseInt(speedEl.value); speedVal.textContent=v<34?'slow':v<67?'mid':'fast';
+    if(playing){stopRace();play();}
+  });
+  document.getElementById('raceShuffle').addEventListener('click',build);
+  raceBtn.addEventListener('click',play);
+  build();
+  pauseHandlers.race=stopRace;
+  window.__raceAPI={play,shuffle:build};
+})();
+
+/* ============ PATHFINDING ============ */
+(function(){
+  const ROWS=15, COLS=25;
+  function computeCell(){
+    const avail=Math.min(gridEl.parentElement.clientWidth||560, window.innerWidth-56);
+    return Math.max(12, Math.min(22, Math.floor(avail/COLS)));
+  }
+  let CELL=22;
+  let grid=[], start={r:0,c:0}, end={r:ROWS-1,c:COLS-1};
+  let gridEl=document.getElementById('pfGrid');
+  let playing=false, timer=null, gen=null, drawing=false;
+  const speedEl=document.getElementById('pfSpeed'), speedVal=document.getElementById('pfSpeedVal');
+  const modeEl=document.getElementById('pfMode'), algoEl=document.getElementById('pfAlgo');
+  const msgEl=document.getElementById('pfMsg'), blurbEl=document.getElementById('pfBlurb');
+  const visitedEl=document.getElementById('pfVisited'), pathLenEl=document.getElementById('pfPathLen'), costEl=document.getElementById('pfCost');
+
+  const BLURBS={
+    bfs:'<b>BFS</b> explores every direction equally, layer by layer. On an unweighted grid this guarantees the shortest path.',
+    dfs:'<b>DFS</b> commits to one direction and backtracks only when stuck. It finds <i>a</i> path — not necessarily the shortest.',
+    dijkstra:'<b>Dijkstra</b> always expands the cheapest known path so far. Mud tiles cost 5 to cross instead of 1, so it correctly routes around expensive terrain.',
+    astar:'<b>A*</b> adds a distance-to-goal heuristic on top of Dijkstra, so it explores toward the target instead of outward in every direction — fewer cells visited, same optimal answer.'
+  };
+
+  function emptyGrid(){
+    grid=[];
+    for(let r=0;r<ROWS;r++){
+      let row=[];
+      for(let c=0;c<COLS;c++) row.push({wall:false,mud:false});
+      grid.push(row);
+    }
+  }
+  function buildDOM(){
+    CELL=computeCell();
+    gridEl.style.gridTemplateColumns=`repeat(${COLS}, ${CELL}px)`;
+    gridEl.innerHTML='';
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const d=document.createElement('div');
+        d.className='cell'; d.dataset.r=r; d.dataset.c=c;
+        d.style.width=CELL+'px'; d.style.height=CELL+'px';
+        d.addEventListener('mousedown',(e)=>{e.preventDefault(); drawing=true; paint(r,c);});
+        d.addEventListener('mouseenter',()=>{if(drawing) paint(r,c);});
+        d.addEventListener('touchstart',(e)=>{e.preventDefault(); paint(r,c);},{passive:false});
+        gridEl.appendChild(d);
+      }
+    }
+  }
+  let resizeTimer=null;
+  window.addEventListener('resize',()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer=setTimeout(()=>{ if(computeCell()!==CELL){ buildDOM(); draw(); } },150);
+  });
+  document.addEventListener('mouseup',()=>drawing=false);
+
+  function paint(r,c){
+    if((r===start.r&&c===start.c)||(r===end.r&&c===end.c)) return;
+    const cell=grid[r][c];
+    const mode=modeEl.value;
+    if(mode==='wall'){cell.wall=true;cell.mud=false;}
+    else if(mode==='mud'){cell.mud=true;cell.wall=false;}
+    else {cell.wall=false;cell.mud=false;}
+    draw();
+  }
+
+  function draw(highlight){
+    const cells=gridEl.children;
+    for(let r=0;r<ROWS;r++){
+      for(let c=0;c<COLS;c++){
+        const el=cells[r*COLS+c];
+        el.className='cell';
+        const cell=grid[r][c];
+        if(cell.wall) el.classList.add('wall');
+        else if(cell.mud) el.classList.add('mud');
+        if(r===start.r&&c===start.c) el.classList.add('start');
+        if(r===end.r&&c===end.c) el.classList.add('end');
+      }
+    }
+    if(highlight){
+      if(highlight.frontier) highlight.frontier.forEach(n=>{
+        const el=cells[n.r*COLS+n.c]; if(!el.classList.contains('start')&&!el.classList.contains('end')) el.classList.add('frontier');
+      });
+      if(highlight.visited) highlight.visited.forEach(n=>{
+        const el=cells[n.r*COLS+n.c]; if(!el.classList.contains('start')&&!el.classList.contains('end')) el.classList.add('visited');
+      });
+      if(highlight.path) highlight.path.forEach(n=>{
+        const el=cells[n.r*COLS+n.c]; if(!el.classList.contains('start')&&!el.classList.contains('end')) el.classList.add('path');
+      });
+    }
+  }
+
+  function generateMaze(){
+    emptyGrid();
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++) grid[r][c].wall=true;
+    const cellRows=Math.floor((ROWS-1)/2)+1, cellCols=Math.floor((COLS-1)/2)+1;
+    const visited=Array.from({length:cellRows},()=>new Array(cellCols).fill(false));
+    const stack=[[0,0]];
+    visited[0][0]=true;
+    grid[0][0].wall=false;
+    while(stack.length){
+      const [cr,cc]=stack[stack.length-1];
+      const nbs=[];
+      [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+        const nr=cr+dr,nc=cc+dc;
+        if(nr>=0&&nr<cellRows&&nc>=0&&nc<cellCols&&!visited[nr][nc]) nbs.push([nr,nc,dr,dc]);
+      });
+      if(nbs.length){
+        const [nr,nc,dr,dc]=nbs[Math.floor(Math.random()*nbs.length)];
+        const r=cr*2,c=cc*2, nr2=nr*2, nc2=nc*2, wr=r+dr, wc=c+dc;
+        if(nr2<ROWS&&nc2<COLS){grid[nr2][nc2].wall=false; grid[wr][wc].wall=false; visited[nr][nc]=true; stack.push([nr,nc]);}
+        else visited[nr]?.[nc]!==undefined ? visited[nr][nc]=true : null;
+      } else stack.pop();
+    }
+    // scatter some mud on open cells
+    for(let r=0;r<ROWS;r++) for(let c=0;c<COLS;c++){
+      if(!grid[r][c].wall && Math.random()<0.06 && !(r===start.r&&c===start.c) && !(r===end.r&&c===end.c)) grid[r][c].mud=true;
+    }
+    grid[start.r][start.c].wall=false;
+    grid[end.r][end.c].wall=false;
+    draw();
+    msgEl.textContent='>_ Maze generated — recursive backtracker, guaranteed solvable corner to corner.';
+    resetStats();
+  }
+
+  function neighbors(r,c){
+    const out=[];
+    [[-1,0],[1,0],[0,-1],[0,1]].forEach(([dr,dc])=>{
+      const nr=r+dr,nc=c+dc;
+      if(nr>=0&&nr<ROWS&&nc>=0&&nc<COLS&&!grid[nr][nc].wall) out.push({r:nr,c:nc});
+    });
+    return out;
+  }
+  const key=(r,c)=>r+','+c;
+  function reconstruct(prev,endNode){
+    let path=[], cur=endNode, k=key(cur.r,cur.c);
+    while(prev[k]){ path.push(cur); cur=prev[k]; k=key(cur.r,cur.c); }
+    path.push(cur);
+    return path.reverse();
+  }
+
+  function* bfsGen(){
+    let queue=[{...start}], visitedSet=new Set([key(start.r,start.c)]), prev={}, order=[];
+    while(queue.length){
+      const node=queue.shift(); order.push(node);
+      yield {visited:order.slice(), frontier:queue.slice(), message:`Visiting (${node.r},${node.c})`};
+      if(node.r===end.r&&node.c===end.c){
+        yield {visited:order.slice(), path:reconstruct(prev,node), done:true, message:'Shortest path found (unweighted).'};
+        return;
+      }
+      neighbors(node.r,node.c).forEach(n=>{
+        const k=key(n.r,n.c);
+        if(!visitedSet.has(k)){ visitedSet.add(k); prev[k]=node; queue.push(n); }
+      });
+    }
+    yield {visited:order, done:true, path:null, message:'No path found.'};
+  }
+  function* dfsGen(){
+    let stack=[{...start}], visitedSet=new Set(), prev={}, order=[];
+    while(stack.length){
+      const node=stack.pop();
+      const k=key(node.r,node.c);
+      if(visitedSet.has(k)) continue;
+      visitedSet.add(k); order.push(node);
+      yield {visited:order.slice(), frontier:stack.slice(), message:`Visiting (${node.r},${node.c})`};
+      if(node.r===end.r&&node.c===end.c){
+        yield {visited:order.slice(), path:reconstruct(prev,node), done:true, message:'A path found — not guaranteed shortest.'};
+        return;
+      }
+      neighbors(node.r,node.c).forEach(n=>{
+        const nk=key(n.r,n.c);
+        if(!visitedSet.has(nk)){ if(!(nk in prev)) prev[nk]=node; stack.push(n); }
+      });
+    }
+    yield {visited:order, done:true, path:null, message:'No path found.'};
+  }
+  function* dijkstraGen(useHeuristic){
+    let dist={}, prev={}, visitedSet=new Set(), order=[];
+    const k0=key(start.r,start.c); dist[k0]=0;
+    let pq=[{...start,d:0}];
+    const h=(n)=>useHeuristic?Math.abs(n.r-end.r)+Math.abs(n.c-end.c):0;
+    while(pq.length){
+      pq.sort((a,b)=>(a.d+h(a))-(b.d+h(b)));
+      const node=pq.shift();
+      const k=key(node.r,node.c);
+      if(visitedSet.has(k)) continue;
+      visitedSet.add(k); order.push(node);
+      yield {visited:order.slice(), frontier:pq.slice(), message:`Visiting (${node.r},${node.c}) · dist=${node.d}`};
+      if(node.r===end.r&&node.c===end.c){
+        yield {visited:order.slice(), path:reconstruct(prev,node), done:true, cost:node.d,
+               message:(useHeuristic?'Optimal path found — heuristic-guided.':'Shortest weighted path found.')};
+        return;
+      }
+      neighbors(node.r,node.c).forEach(n=>{
+        const nk=key(n.r,n.c);
+        if(visitedSet.has(nk)) return;
+        const cost=grid[n.r][n.c].mud?5:1;
+        const nd=node.d+cost;
+        if(dist[nk]===undefined||nd<dist[nk]){ dist[nk]=nd; prev[nk]=node; pq.push({...n,d:nd}); }
+      });
+    }
+    yield {visited:order, done:true, path:null, message:'No path found.'};
+  }
+  function makeGen(){
+    const a=algoEl.value;
+    if(a==='bfs') return bfsGen();
+    if(a==='dfs') return dfsGen();
+    if(a==='dijkstra') return dijkstraGen(false);
+    return dijkstraGen(true);
+  }
+
+  function resetStats(){ visitedEl.textContent='0'; pathLenEl.textContent='–'; costEl.textContent='–'; }
+  function updateBlurb(){ blurbEl.innerHTML=BLURBS[algoEl.value]; }
+
+  function speedMs(){ const v=parseInt(speedEl.value); return 220-v*2; }
+  const pfBtn=document.getElementById('pfRun');
+  function stopPlay(){ playing=false; clearInterval(timer); timer=null; pfBtn.textContent='Run ▶'; pfBtn.classList.remove('playing'); }
+  function step(){
+    const {value,done}=gen.next();
+    if(done) return false;
+    draw(value);
+    visitedEl.textContent=value.visited.length.toLocaleString();
+    msgEl.textContent='>_ '+value.message;
+    if(value.done){
+      if(value.path){ pathLenEl.textContent=value.path.length; costEl.textContent=(value.cost!==undefined?value.cost:value.path.length-1); }
+      else { pathLenEl.textContent='none'; costEl.textContent='–'; }
+      return false;
+    }
+    return true;
+  }
+  function play(){
+    if(playing){stopPlay();return;}
+    resetStats();
+    gen=makeGen();
+    playing=true; pfBtn.textContent='Pause ❚❚'; pfBtn.classList.add('playing');
+    timer=setInterval(()=>{ if(!step()) stopPlay(); }, speedMs());
+  }
+
+  algoEl.addEventListener('change',updateBlurb);
+  speedEl.addEventListener('input',()=>{
+    const v=parseInt(speedEl.value); speedVal.textContent=v<34?'slow':v<67?'mid':'fast';
+    if(playing){stopPlay();play();}
+  });
+  document.getElementById('pfMaze').addEventListener('click',()=>{stopPlay(); generateMaze();});
+  document.getElementById('pfClear').addEventListener('click',()=>{stopPlay(); emptyGrid(); draw(); resetStats(); msgEl.textContent='>_ Grid cleared.';});
+  pfBtn.addEventListener('click',play);
+
+  emptyGrid(); buildDOM(); draw(); updateBlurb(); generateMaze();
+  pauseHandlers.path=stopPlay;
+  window.__pfAPI={play,maze:generateMaze};
+})();
+
+/* ============ KEYBOARD SHORTCUTS ============ */
+document.addEventListener('keydown',(e)=>{
+  const tag=(e.target.tagName||'').toLowerCase();
+  if(tag==='select'||tag==='input') return;
+  if(e.code==='Space'){
+    e.preventDefault();
+    if(activeView==='sort') window.__sortAPI.play();
+    else if(activeView==='race') window.__raceAPI.play();
+    else if(activeView==='path') window.__pfAPI.play();
+  } else if(e.key==='s'||e.key==='S'){
+    if(activeView==='sort') window.__sortAPI.step();
+  } else if(e.key==='n'||e.key==='N'){
+    if(activeView==='sort') window.__sortAPI.shuffle();
+    else if(activeView==='race') window.__raceAPI.shuffle();
+    else if(activeView==='path') window.__pfAPI.maze();
+  }
+});
+</script>
+</body>
+</html>
